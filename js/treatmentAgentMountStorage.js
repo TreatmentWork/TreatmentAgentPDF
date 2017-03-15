@@ -1,6 +1,6 @@
 var express = require('express');
 var bodyParser = require('body-parser');
-var clam = require('./pdfConfig.js');
+var clam = require('./clamConfig.js');
 var fs = require('fs');
 var commonConfig = require(appRoot + '/config/commonConfig.json');
 var logger = require(appRoot + '/js/util/winstonConfig.js');

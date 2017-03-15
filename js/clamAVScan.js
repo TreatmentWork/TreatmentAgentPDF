@@ -1,4 +1,4 @@
-pdfconversion/*!
+/*!
  * ClamAV NodeJSScanner
  */
 
@@ -20,47 +20,31 @@ function NodeJSScanner(options) {
     // Configuration Settings
     this.defaults = Object.freeze({
         remove_infected: false,
-        quarantine_infected: false,
         scan_log: null,
         debug_mode: false,
         file_list: null,
-        scan_recursively: true,
-        pdfconversion: {
-            path: '/usr/bin/pdfconversion',
+        lowriter: {
+            path: '/usr/bin/lowriter',
             scan_archives: true
         }
     });
 
     this.settings = __.extend({},this.defaults);
     //Name of scanner
-    this.scanner = 'pdfconversion';
+    this.scanner = 'lowriter';
 
-    // Check to make sure scanner exists and actually is a pdfconversion binary
+    // Check to make sure scanner exists and actually is a clamscan binary
     if (!this.is_clamav_binary_sync(this.scanner)) {
         throw new Error("No valid & active virus scanning binaries are  available!");
     }
 
     // Override defaults with user preferences
-    if (options.hasOwnProperty('pdfconversion') && Object.keys(options.pdfconversion).length > 0) {
-        this.settings.pdfconversion = __.extend({},this.settings.pdfconversion, options.pdfconversion);
-        delete options.pdfconversion;
+    if (options.hasOwnProperty('lowriter') && Object.keys(options.lowriter).length > 0) {
+        this.settings.lowriter = __.extend({},this.settings.lowriter, options.lowriter);
+        delete options.lowriter;
     }
     this.settings = __.extend({},this.settings,options);
 
-    // Backwards compatibilty section
-    if (this.settings.quarantine_path && !__.isEmpty(this.settings.quarantine_path)) {
-        this.settings.quarantine_infected = this.settings.quarantine_path;
-    }
-
-    // Make sure quarantine infected path exists at specified location
-    if (!__.isEmpty(this.settings.quarantine_infected) && !fs.existsSync(this.settings.quarantine_infected)) {
-        var err_msg = "Quarantine infected path (" + this.settings.quarantine_infected + ") is invalid.";
-        this.settings.quarantine_infected = false;
-        throw new Error(err_msg);
-
-        if (this.settings.debug_mode)
-            console.log("pdf conversion Scanner: " + err_msg);
-    }
 
     // Build clam flags
     this.clam_flags = build_clam_flags(this.scanner, this.settings);
@@ -70,7 +54,7 @@ function NodeJSScanner(options) {
 // ****************************************************************************
 // Checks to see if a particular path contains a clamav binary
 // -----
-// @param   String  scanner     Scanner (pdfconversion ) to check
+// @param   String  scanner     Scanner (clamscan ) to check
 // @return  Boolean             TRUE: Is binary; FALSE: Not binary
 // ****************************************************************************
 NodeJSScanner.prototype.is_clamav_binary_sync = function(scanner) {
@@ -83,7 +67,7 @@ NodeJSScanner.prototype.is_clamav_binary_sync = function(scanner) {
     }
 
     var version_cmds = {
-        pdfconversion: path + ' --version'
+        lowriter: path + ' --version'
     };
 
     /*
@@ -128,50 +112,31 @@ NodeJSScanner.prototype.is_infected = function(file, callback) {
         console.log("Nodejs-ClamAv-Scanner: Scanning " + file);
         console.log('Nodejs-ClamAv-Scanner: Configured clam command: ' + this.settings[this.scanner].path + ' ' + this.build_clam_args(file).join(' '));
     }
-
+    var outputDir = '/mountshare/treatmentResult';
+    if (!fs.existsSync(outputDir)){
+        fs.mkdirSync(outputDir);
+        logger.debug("Dir successfully created:" + outputDir);
+    } else {
+      logger.debug("Dir already  exists:" + outputDir);
+    }
     // Execute the clam binary with the proper flags
     execFile(this.settings[this.scanner].path, this.build_clam_args(file), function(err, stdout, stderr) {
-        if (err || stderr) {
-            if (err) {
-                if(err.hasOwnProperty('code') && err.code === 1) {
-                    callback(null, file, true);
-                } else {
-                    if(self.settings.debug_mode)
-                        console.log("Nodejs-ClamAv-Scanner: " + err);
-                    callback(new Error(err), file, null);
-                }
-            } else {
-                console.error("Nodejs-ClamAv-Scanner: " + stderr);
-                callback(err, file, null);
-            }
-        } else {
-            var result = stdout.trim();
 
-            if(self.settings.debug_mode) {
-                console.log('Nodejs-ClamAv-Scanner: file size: ' + fs.statSync(file).size);
-                console.log('Nodejs-ClamAv-Scanner: ' + result);
-            }
-            isDir(file, function(status) {
-              if(!status) {
-                if(result.match(/OK$/)) {
-                    if(self.settings.debug_mode) {
-                        console.log("Nodejs-ClamAv-Scanner: " + file + ' is OK!');
-                      }
-                    callback(null, file, false);
-                } else {
-                    if(self.settings.debug_mode) {
-                        console.log("Nodejs-ClamAv-Scanner: " + file + ' is INFECTED!');
-                      }
-                    callback(null, file, true);
-                }
-            } else {
-              if(self.settings.debug_mode) {
-                  console.log("Nodejs-ClamAv-Scanner: Directory scanning done!");
-                }
-              callback(null, result, null);
-            }
-          });
-        }
+            //var result = stdout.trim();
+            var leafname= file.split('\\').pop().split('/').pop();
+            logger.debug('leafname: ' + leafname);
+
+            var leafnameNoExt = leafname.split(".")[0];
+            logger.debug('leafnameNoExt: ' + leafnameNoExt);
+
+            var outPdfName = outputDir + '/' + leafnameNoExt + '.pdf';
+            logger.debug('outPdfName: ' + outPdfName);
+
+            var outCreated = fs.existsSync(outPdfName);
+            logger.debug('outCreated: ' + outCreated);
+
+            callback(null, file, outCreated);
+
     });
 };
 
@@ -232,10 +197,10 @@ NodeJSScanner.prototype.scan_files = function(files, end_cb, file_cb) {
                     if (self.settings.debug_mode)
                         console.log("Nodejs-ClamAv-Scanner: " + completed_files + "/" + num_files + " have been scanned!");
 
-                    if(infected || err) {
-                        bad_files.push(file);
-                    } else if(!infected ) {
+                      if(infected || err) {
                         good_files.push(file);
+                    } else if(!infected ) {
+                        bad_files.push(file);
                     }
 
                     if(__.isFunction(file_cb)) file_cb(err, file, infected);
@@ -317,7 +282,7 @@ module.exports = function(options) {
 // *****************************************************************************
 // Builds out the flags based on the configuration the user provided
 // -----
-// @param    String    scanner        The scanner to use (pdfconversion)
+// @param    String    scanner        The scanner to use (clamscan)
 // @param    Object    settings    The settings used to build the flags
 // @return    String                The concatenated clamav flags
 // @api        Private
@@ -325,38 +290,11 @@ module.exports = function(options) {
 function build_clam_flags(scanner, settings) {
     var flags_array = [];
 
-    flags_array.push('--stdout');
-    flags_array.push('--no-summary');
-    // Write info to a log
-    if (!__.isEmpty(settings.scan_log)) {
-        flags_array.push('--log=' + settings.scan_log);
-    }
-
-    // Remove infected files
-    if (settings.remove_infected === true) {
-        flags_array.push('--remove=yes');
-    } else {
-        flags_array.push('--remove=no');
-    }
-    // Scan archives
-    if (settings.pdfscan.scan_archives === true) {
-        flags_array.push('--scan-archive=yes');
-    } else {
-        flags_array.push('--scan-archive=no');
-    }
-
-    // Recursive scanning
-    if (settings.scan_recursively === true) {
-        flags_array.push('-r');
-    } else {
-        flags_array.push('--recursive=no');
-    }
-
-    // Remove infected files
-    if (settings.remove_infected !== true) {
-        if (!__.isEmpty(settings.quarantine_infected))
-            flags_array.push('--move=' + settings.quarantine_infected);
-    }
+    flags_array.push('--headless');
+    flags_array.push('--convert-to');
+    flags_array.push('pdf');
+    flags_array.push('--outdir');
+    flags_array.push('/mountshare/treatmentResult/');
 
     // Build the String
     return flags_array;

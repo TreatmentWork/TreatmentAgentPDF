@@ -2,8 +2,8 @@
     "port" : "8080",
     "mountStorageAppPort" : "8081",
     "logDir" : "logs",
-    "logFileName" : "TController.log",
-    "mountStorageEP" :"/getStorageMountResult",
+    "logFileName" : "PDFConversionscan.log",
+    "mountStorageEP" :"/getPDFStorageMountResult",
     "mountStoragePort" :"8001",
     "timeout" :"600000"
 }
