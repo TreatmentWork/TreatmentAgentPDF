@@ -1,9 +1,9 @@
 var express = require('express');
 var bodyParser = require('body-parser');
-var clam = require('./clamConfig.js');
+var clam = require('./pdfConfig.js');
 var fs = require('fs');
 var commonConfig = require(appRoot + '/config/commonConfig.json');
-var clamTAConfig = require(appRoot + '/config/clamAVConfig.json');
+var clamTAConfig = require(appRoot + '/config/pdfTAConfig.json');
 var logger = require(appRoot + '/js/util/winstonConfig.js');
 var resultCallback = require(appRoot + '/js/httpClient.js');
 
@@ -33,16 +33,6 @@ app.post('/pdfconversion/singlescan', function(req, res) {
 			postData = {"requestId" : requestId, "vmName": vmName, "configData": configData, "result" : {msg: err.message, error : err}};
 			resultCallback.sendHttpRequest(postData, clamTAConfig.endpoint, reqIp, clamTAConfig.port);
 		} else {
-			// var is_infected = clam.is_infected(scanFile, function(err, result, is_infected) {
-		  //   if(err) {
-			// 		postData = {"requestId" : requestId, "vmName": vmName, "configData": configData, "result" : {msg: err.message, error : err}};
-			// 		resultCallback.sendHttpRequest(postData, clamTAConfig.endpoint, reqIp, clamTAConfig.port);
-		  //   }
-			// 	postData = {"requestId" : requestId, "vmName": vmName, "configData": configData, "result" : is_infected};
-			// 	resultCallback.sendHttpRequest(postData, clamTAConfig.endpoint, reqIp, clamTAConfig.port);
-			//
-			// });
-
 			var is_infected = clam.scan_files(scanFile,  function(a, good_files, bad_files) {
 					var finalBody = [];
 					finalBody.push({msg: "Multiple scan files aggregated result..." });
@@ -60,7 +50,6 @@ app.post('/pdfconversion/singlescan', function(req, res) {
 						}
 						postData = {"requestId" : requestId, "vmName": null, "configData": null, "result" : intermediateBody};
 						resultCallback.sendHttpRequest(postData, clamTAConfig.endpoint, reqIp, clamTAConfig.port);
-
 
 				}	);
 		}

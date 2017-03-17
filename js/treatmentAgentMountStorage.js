@@ -1,6 +1,5 @@
 var express = require('express');
 var bodyParser = require('body-parser');
-var clam = require('./clamConfig.js');
 var fs = require('fs');
 var commonConfig = require(appRoot + '/config/commonConfig.json');
 var logger = require(appRoot + '/js/util/winstonConfig.js');
@@ -24,10 +23,8 @@ app.post('/mountStorage', function(req, res) {
 		var scanFiles = req.body.scanFiles;
 		var storageMountPoint = req.body.storageMountPoint;
 		var reqIp = req.ip;
-		//var reqIp = '51.141.2.168';
 		logger.debug('Mount storage request received from IP:' + reqIp);
 
-		//logger.debug('requestId:' + requestId + ', vmName:' + vmName +', scanFiles:' + scanFiles + ', configData:' + configData );
 		logger.debug('configData.storageAccountName:' + configData.storageAccountName + ', configData.storageAccountShare:' + configData.storageAccountShare +', configData.key:' + configData.key );
 		res.send('File storage mount is being performed asyncronously. Once operation completes, the result will be sent back to the Treatment Controller.');
 		if (!fs.existsSync(storageMountPoint)){
